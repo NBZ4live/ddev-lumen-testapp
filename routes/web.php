@@ -16,3 +16,9 @@
 $router->get('/', function () use ($router) {
     return $router->app->version();
 });
+
+$router->get('/api/status-code/{statusCode}', function ($statusCode) use ($router) {
+    $statusCodeModel = \App\StatusCode::findOrFail($statusCode);
+
+    return new \App\Http\Resources\StatusCodeResource($statusCodeModel);
+});
