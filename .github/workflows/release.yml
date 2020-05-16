@@ -44,14 +44,26 @@ jobs:
           DB_PORT: ${{ job.services.db.ports[3306] }}
         run: php artisan migrate --seed
 
+      - name: Install Dependencies withut dev
+        run: composer install -q --no-ansi --no-interaction --no-scripts --no-suggest --no-progress --prefer-dist --no-dev
+
       - name: Dump the database
         env:
           DB_HOST: 127.0.0.1
           DB_PORT: ${{ job.services.db.ports[3306] }}
         run: mysqldump -h127.0.0.1 -P"$DB_PORT" -udb -pdb db > ddev-lumen-testapp.sql
 
-      - name: GZIP the database dump
-        run: gzip ddev-lumen-testapp.sql
+      - name: Archive the database dump
+        run: |
+          tar -czf ddev-lumen-testapp_sql.tar.gz ddev-lumen-testapp.sql
+          zip ddev-lumen-testapp_sql.zip ddev-lumen-testapp.sql
+
+      - name: Build the code assets
+        run: |
+          mkdir ddev-lumen-testapp
+          rsync -a --exclude=ddev-lumen-testapp --exclude=.git . ddev-lumen-testapp/
+          tar -czf ddev-lumen-testapp.tar.gz ddev-lumen-testapp
+          zip -r ddev-lumen-testapp.zip ddev-lumen-testapp
 
       - name: Create Release
         id: create_release
@@ -64,13 +76,46 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: Upload Release Asset
-        id: upload-release-asset
+      - name: Upload DB TAR Asset
+        id: upload-sql-tar-asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./ddev-lumen-testapp.sql.gz
-          asset_name: ddev-lumen-testapp.sql.gz
-          asset_content_type: application/gzip
+          asset_path: ./ddev-lumen-testapp_sql.tar.gz
+          asset_name: ddev-lumen-testapp_sql.tar.gz
+          asset_content_type: application/tar+gzip
+
+      - name: Upload DB ZIP Asset
+        id: upload-sql-zip-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./ddev-lumen-testapp_sql.zip
+          asset_name: ddev-lumen-testapp_sql.zip
+          asset_content_type: application/zip
+
+      - name: Upload Code TAR Asset
+        id: upload-code-tar-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./ddev-lumen-testapp.tar.gz
+          asset_name: ddev-lumen-testapp.tar.gz
+          asset_content_type: application/tar+gzip
+
+      - name: Upload Code ZIP Asset
+        id: upload-code-zip-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./ddev-lumen-testapp.zip
+          asset_name: ddev-lumen-testapp.zip
+          asset_content_type: application/zip
